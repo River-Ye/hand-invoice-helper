@@ -1,3 +1,5 @@
+import { fetchCompanyData } from './tool-common.mjs';
+
 const TYPES = new Set(["three", "two"]);
 const TAXES = new Set(["tax", "zero", "free"]);
 const BASES = new Set(["gross", "net"]);
@@ -315,11 +317,7 @@ if (typeof document !== "undefined") {
       controller.abort();
     }, 8000);
     try {
-      const response = await fetch(url, { signal: controller.signal });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const payload = await response.json();
-      if (!payload || typeof payload !== "object" || !("data" in payload)) throw new Error("invalid response");
-      return payload.data;
+      return await fetchCompanyData(url, controller.signal);
     } catch (error) {
       if (timedOut) throw new Error("timeout");
       throw error;

@@ -1,162 +1,70 @@
 <!doctype html>
 <html lang="zh-Hant">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="三聯式、二聯式手開發票填寫示意與營業稅換算工具。">
-    <meta name="theme-color" content="#1e4b88">
-    <meta name="referrer" content="no-referrer">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://company.g0v.ronny.tw; img-src 'self' data:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
-    <title>手開發票小幫手</title>
-    <link rel="stylesheet" href="./styles.css">
-    <script type="module" src="./app.mjs"></script>
-  </head>
-  <body>
-    <a class="skip-link" href="#helper-form">跳到填寫區</a>
-    <header class="hero">
-      <img class="hero__logo" src="./chen-yi-logo.jpg" width="1600" height="369" alt="宸逸稅務記帳士事務所 Chen Yi Certified Public Bookkeepers Firm">
-      <p class="eyebrow">HANDWRITTEN INVOICE GUIDE</p>
-      <h1>手開發票<br><span>小幫手</span></h1>
-      <p class="hero__intro">輸入買受人與金額，立即對照發票每一格該怎麼寫。</p>
-    </header>
-
-    <main>
-      <section class="workspace" aria-labelledby="form-title">
-        <div class="workspace__heading">
-          <div>
-            <p class="step">01 · 選擇發票</p>
-            <h2 id="form-title">這張發票開給誰？</h2>
-          </div>
-          <p class="date-chip" id="today-chip">載入日期中</p>
-        </div>
-
-        <div class="invoice-tabs" role="group" aria-label="發票類型">
-          <button type="button" data-type="three" aria-pressed="true">
-            <strong>三聯式</strong><span>開給公司</span>
-          </button>
-          <button type="button" data-type="two" aria-pressed="false">
-            <strong>二聯式</strong><span>開給個人</span>
-          </button>
-        </div>
-
-        <form id="helper-form" novalidate>
-          <fieldset id="buyer-panel">
-            <legend><span>02</span> 買受人</legend>
-            <p class="section-help">輸入達門檻時，統編或公司名稱會送至 g0v 自動查詢；也可在查詢失敗後直接手動填寫。</p>
-            <div class="form-grid">
-              <div class="field">
-                <label for="company-vat">統一編號</label>
-                <input id="company-vat" name="vat" type="text" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="例：24536806">
-              </div>
-              <div class="field field--suggestions">
-                <label for="company-name">公司名稱（抬頭）</label>
-                <input id="company-name" name="name" type="text" maxlength="120" autocomplete="off" placeholder="輸入公司名稱">
-                <div id="company-suggestions" class="suggestions" hidden></div>
-              </div>
-            </div>
-            <p id="lookup-status" class="status" role="status" aria-live="polite"></p>
-          </fieldset>
-
-          <fieldset>
-            <legend><span>03</span> 金額</legend>
-            <p class="section-help">含稅或未稅擇一輸入，另一欄會立即換算；金額以新臺幣元計。</p>
-            <div class="amount-grid">
-              <div class="field field--money">
-                <label for="gross-amount">收款金額（含稅價）</label>
-                <span class="money-prefix" aria-hidden="true">$</span>
-                <input id="gross-amount" name="gross" type="text" inputmode="numeric" value="0" aria-describedby="amount-error">
-              </div>
-              <div class="field">
-                <label for="tax-type">課稅別</label>
-                <select id="tax-type" name="tax">
-                  <option value="tax">應稅（5%）</option>
-                  <option value="zero">零稅率（0%）</option>
-                  <option value="free">免稅</option>
-                </select>
-              </div>
-              <div class="field field--money">
-                <label for="net-amount">銷售額（未稅價）</label>
-                <span class="money-prefix" aria-hidden="true">$</span>
-                <input id="net-amount" name="net" type="text" inputmode="numeric" value="0" aria-describedby="amount-error">
-              </div>
-              <div class="field field--money field--readonly">
-                <label for="tax-amount">營業稅額</label>
-                <span class="money-prefix" aria-hidden="true">$</span>
-                <output id="tax-amount" for="gross-amount net-amount">0</output>
-              </div>
-            </div>
-            <p id="amount-error" class="error" role="alert"></p>
-          </fieldset>
-        </form>
-      </section>
-
-      <section class="preview" aria-labelledby="preview-title">
-        <div class="preview__heading">
-          <div>
-            <p class="step">04 · 照著填</p>
-            <h2 id="preview-title">發票填寫位置示意</h2>
-          </div>
-          <span class="live-badge"><i></i> 即時更新</span>
-        </div>
-
-        <p id="invoice-note" class="invoice-note">第一聯存根聯留在發票本上，第二、三聯交給客戶。</p>
-
-        <div class="invoice-sheet" id="invoice-sheet" aria-label="三聯式發票填寫示意">
-          <div class="invoice-sheet__topline">
-            <span class="invoice-code">JB</span>
-            <strong id="invoice-heading">統一發票（三聯式）</strong>
-            <span class="invoice-period"><b id="period-year">—</b> 年 <b id="period-range">—</b></span>
-          </div>
-
-          <div class="invoice-meta">
-            <div id="buyer-preview">
-              <span class="print-label">買受人</span>
-              <strong class="ink" id="preview-name">請填公司抬頭</strong>
-              <span class="print-label">統一編號</span>
-              <span class="vat-boxes" id="preview-vat" aria-label="發票上的統一編號">────────</span>
-            </div>
-            <div class="invoice-date">
-              <span class="print-label">開立日期</span>
-              <strong class="ink"><span id="date-year">—</span> 年 <span id="date-month">—</span> 月 <span id="date-day">—</span> 日</strong>
-            </div>
-          </div>
-
-          <div class="invoice-table" role="table" aria-label="發票品項與金額示意">
-            <div class="invoice-row invoice-row--head" role="row">
-              <span role="columnheader">品名</span><span role="columnheader">數量</span><span role="columnheader">單價</span><span role="columnheader">金額</span>
-            </div>
-            <div class="invoice-row" role="row">
-              <strong class="ink" role="cell">請填上品項</strong><strong class="ink" role="cell">1</strong><strong class="ink" id="preview-unit" role="cell">0</strong><strong class="ink" id="preview-line-total" role="cell">0</strong>
-            </div>
-            <div class="invoice-row invoice-row--blank" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
-          </div>
-
-          <div class="invoice-totals">
-            <div class="invoice-total--three-only"><span>銷售額合計</span><strong class="ink" id="preview-net">0</strong></div>
-            <div><span>課稅別</span><strong class="ink" id="preview-tax-type">應稅 ✓</strong></div>
-            <div class="invoice-total--three-only"><span>營業稅</span><strong class="ink" id="preview-tax">0</strong></div>
-            <div class="invoice-grand-total"><span>總計</span><strong class="ink" id="preview-gross">0</strong></div>
-          </div>
-
-          <div class="invoice-words">
-            <span>總計新臺幣（中文大寫）</span>
-            <strong class="ink"><span id="preview-chinese">零</span> 元整</strong>
-          </div>
-          <p class="stamp-note">記得蓋發票章</p>
-        </div>
-
-        <div class="actions">
-          <button type="button" class="button button--secondary" id="clear-button">清除資料</button>
-          <button type="button" class="button button--primary" id="share-button">複製分享連結</button>
-        </div>
-        <p class="share-note">分享連結會包含目前填寫的公司名稱、統編與金額；資料不會儲存在本站。</p>
-        <p id="action-status" class="status status--center" role="status" aria-live="polite"></p>
-      </section>
-    </main>
-
-    <footer>
-      <p><strong>手開發票小幫手</strong> · 僅供填寫位置與金額換算參考，實際開立仍應依財政部規定辦理。</p>
-      <p>公司資料由 <a href="https://company.g0v.ronny.tw/" target="_blank" rel="noopener noreferrer">g0v 台灣公司資料</a>提供；查詢失敗時仍可手動輸入。</p>
-    </footer>
-  </body>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#1e4b88">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://company.g0v.ronny.tw; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<link rel="stylesheet" href="./styles.css">
+<link rel="stylesheet" href="./tools.css">
+<title>宸逸稅務小幫手｜手開發票・勞報單・折讓單</title>
+<meta name="description" content="宸逸稅務小幫手：手開發票填寫示意、115年勞報單試算與紙本折讓單PDF。">
+<script type="module" src="./home.mjs">
+</script>
+</head>
+<body class="home-page">
+<a class="skip-link" href="#tools">跳到工具選擇</a>
+<header class="home-header">
+<a href="./index.html" aria-label="宸逸稅務小幫手首頁">
+<img class="brand-logo" src="./chen-yi-logo.jpg" width="1600" height="369" alt="宸逸稅務記帳士事務所">
+</a>
+<p class="eyebrow">CHEN YI · EVERYDAY TAX TOOLS</p>
+<h1>把單據填好，<br>
+<span>讓工作更簡單。</span>
+</h1>
+<p class="home-intro">從開發票到給付報酬，選一個工具就能開始。<br>填寫、核對，再把單據交給需要的人。</p>
+</header>
+<main class="home-main" id="tools">
+<div class="tool-cards">
+<a class="tool-card" href="./invoice.html">
+<span class="card-number">01</span>
+<span class="card-tag">對照填寫</span>
+<h2>手開發票</h2>
+<p>含稅、未稅立即換算，對照二聯式與三聯式發票的填寫位置。</p>
+<span class="card-action">開始填發票 <span aria-hidden="true">↗</span>
+</span>
+</a>
+<a class="tool-card" href="./labor.html">
+<span class="card-number">02</span>
+<span class="card-tag">115 年度 · PDF</span>
+<h2>勞務報酬單</h2>
+<p>試算所得稅與二代健保，反算實領金額，準備好可簽章的單據。</p>
+<span class="card-action">製作勞報單 <span aria-hidden="true">↗</span>
+</span>
+</a>
+<a class="tool-card" href="./allowance.html">
+<span class="card-number">03</span>
+<span class="card-tag">紙本發票 · PDF</span>
+<h2>折讓證明單</h2>
+<p>整理退貨與折讓明細，產生二聯或四聯證明單，列印後簽章。</p>
+<span class="card-action">製作折讓單 <span aria-hidden="true">↗</span>
+</span>
+</a>
+</div>
+<aside class="home-note">
+<strong>不用登入，資料不留存。</strong>
+<p>新表單只在這次開啟的頁面中處理，離開後不保留。需要紙本手填，也可以下載空白或部分填寫的 PDF。</p>
+<a href="./guide.html">先看看單據怎麼用 →</a>
+</aside>
+<noscript>
+<p class="notice">請啟用 JavaScript 使用試算及 PDF 功能。下方使用說明仍可閱讀。</p>
+</noscript>
+</main>
+<footer>
+<p>宸逸稅務小幫手 · 依實際交易與給付情況填寫，完成後請核對並交由事務所辦理申報。</p>
+<p>
+<a href="./guide.html">使用說明與法規依據</a> · 文字、影像與簽名不儲存在本站。</p>
+</footer>
+</body>
 </html>

@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#1e4b88">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://company.g0v.ronny.tw; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<link rel="stylesheet" href="./styles.css">
+<link rel="stylesheet" href="./tools.css">
+<title>紙本折讓單小幫手｜宸逸稅務小幫手</title>
+<meta name="description" content="手開發票、勞務報酬單與紙本折讓單使用說明，含115年計算依據與電子折讓流程。">
+<script type="module" src="./allowance.mjs">
+</script>
+</head>
+<body class="tool-page">
+<a class="skip-link" href="#allowance-form">跳到填寫區</a>
+<header class="tool-header">
+<a href="./index.html" aria-label="宸逸稅務小幫手首頁">
+<img class="brand-logo" src="./chen-yi-logo.jpg" width="1600" height="369" alt="宸逸稅務記帳士事務所">
+</a>
+<nav class="tool-nav" aria-label="工具導覽">
+<a href="./index.html">工具首頁</a>
+<a href="./invoice.html">手開發票</a>
+<a href="./labor.html">勞報單</a>
+<a href="./allowance.html" aria-current="page">折讓單</a>
+<a href="./guide.html">使用說明</a>
+</nav>
+<p class="eyebrow">PAPER INVOICE · ALLOWANCE</p>
+<h1>折讓單小幫手</h1>
+<p>整理退貨與折讓明細，列印後交雙方核對簽章。</p>
+</header>
+<main class="tool-main">
+<div class="tool-grid">
+<section class="workspace">
+<h2>填寫折讓資料</h2>
+<p class="notice">適用紙本發票。電子發票請至原電子系統開立及上傳，<a href="./guide.html#electronic">查看電子折讓流程</a>。</p>
+<form id="allowance-form" autocomplete="off" novalidate>
+<fieldset>
+<legend>01 · 原開立銷貨發票單位（賣方）</legend>
+<p class="hint">輸入完整 8 碼統編會送至 g0v 查詢公司資料；姓名、地址與明細不外送。查不到時可直接手填。</p>
+<div class="form-grid">
+<div class="field">
+<label for="seller-vat">統一編號</label>
+<input id="seller-vat" name="seller-vat" type="text" autocomplete="off" inputmode="numeric" maxlength="8">
+</div>
+<div class="field">
+<label for="seller-name">公司／個人名稱</label>
+<input id="seller-name" name="seller-name" type="text" autocomplete="off" maxlength="120">
+</div>
+<div class="field field--full">
+<label for="seller-address">營業所在地址（選填）</label>
+<input id="seller-address" name="seller-address" maxlength="180" autocomplete="off">
+</div>
+</div>
+<p class="status" id="seller-status" role="status">
+</p>
+</fieldset>
+<fieldset>
+<legend>02 · 基本資訊</legend>
+<div class="form-grid">
+<div class="field">
+<label for="allowance-date">折讓單開立日期</label>
+<input id="allowance-date" name="allowance-date" type="date" autocomplete="off" >
+</div>
+<div class="field">
+<label for="copies">PDF 輸出聯數</label>
+<select id="copies">
+<option value="4">四聯 · 2 張 A4</option>
+<option value="2">二聯 · 1 張 A4</option>
+</select>
+</div>
+</div>
+</fieldset>
+<fieldset>
+<legend>03 · 發票折讓明細</legend>
+<p class="hint">最多 7 筆。數量、未稅單價最多 6 位小數；每列金額與稅額四捨五入至元，合計加總各列。請與原交易核對。</p>
+<div id="rows">
+</div>
+<button class="button button--small button--secondary" type="button" id="add-row">＋ 新增明細</button>
+<p id="row-limit" class="status" role="status">
+</p>
+</fieldset>
+<fieldset>
+<legend>04 · 原進貨人（買方）</legend>
+<p class="hint">輸入完整 8 碼統編會送至 g0v 查詢公司資料；姓名、地址與明細不外送。查不到時可直接手填。</p>
+<div class="form-grid">
+<div class="field">
+<label for="buyer-vat">統一編號</label>
+<input id="buyer-vat" name="buyer-vat" type="text" autocomplete="off" inputmode="numeric" maxlength="8">
+</div>
+<div class="field">
+<label for="buyer-name">公司／個人名稱</label>
+<input id="buyer-name" name="buyer-name" type="text" autocomplete="off" maxlength="120">
+</div>
+<div class="field field--full">
+<label for="buyer-address">聯絡地址（選填）</label>
+<input id="buyer-address" name="buyer-address" maxlength="180" autocomplete="off">
+</div>
+</div>
+<p class="status" id="buyer-status" role="status">
+</p>
+</fieldset>
+</form>
+</section>
+<section class="preview" aria-labelledby="preview-heading">
+<div class="preview__heading">
+<div>
+<p class="step">核對後下載</p>
+<h2 id="preview-heading">折讓證明單預覽</h2>
+</div>
+<span class="live-badge">A4 · 每頁兩聯</span>
+</div>
+<div id="document-preview" aria-label="紙本折讓單列印預覽">
+</div>
+<dl class="summary-grid" id="calculation-summary">
+<div class="summary-item">
+<dt>未稅金額合計</dt>
+<dd>
+<output id="net-total">—</output>
+</dd>
+</div>
+<div class="summary-item">
+<dt>營業稅合計</dt>
+<dd>
+<output id="tax-total">—</output>
+</dd>
+</div>
+</dl>
+<p class="error" id="form-error" role="alert">
+</p>
+<div class="actions">
+<button type="button" class="button button--primary" id="download-pdf">下載折讓單 PDF</button>
+<button type="button" class="button button--secondary" id="clear-form">清除全部資料</button>
+</div>
+<p class="hint">空白或部分填寫也可下載，未填欄位留空。離開頁面不保存資料。二聯只輸出前兩聯，請確認交易需要的聯次。</p>
+<p id="download-status" class="status" role="status">
+</p>
+</section>
+</div>
+<section class="guide-content">
+<h2>什麼時候需要開折讓單？</h2>
+<p>銷貨退回或雙方同意折讓時，依原發票是否已申報、買受人是否已扣抵等情況辦理。紙本發票尚未申報而填錯，原則上可收回原聯次作廢重開；已申報的錯誤應依實際事實辦理更正或折讓，不宜一概認為任何錯誤都只能開折讓單。</p>
+<p>通常由賣方協助製作證明單，交買方核對、簽章後取回。<strong>進貨折讓應於當期扣減進項；銷貨折讓依規定於當期或次期扣減銷項。</strong>未依規定申報可能涉及處罰，請交由事務所核對。</p>
+<h2>折讓單開立方式</h2>
+<ol>
+<li>日期填<strong>折讓單開立日期</strong>，原發票日期另填於明細。</li>
+<li>上方填原銷貨人資料，營業地址選填。</li>
+<li>退貨或折讓品名逐列填寫；同張發票可有多項明細，每列填相同的原發票號碼。</li>
+<li>原三聯式發票，請買受人依規定蓋章確認並交回。</li>
+<li>原二聯式發票，由自然人簽名或蓋章，機關團體用印，並依規定取回原收執聯；無法收回時可依規定以影本替代。符合買賣契約及已載明姓名地址等條件時另依規定辦理，建議留下聯絡方式。</li>
+<li>四聯的<strong>前兩聯交原銷貨人，後兩聯由買受人留存</strong>。</li>
+<li>電子發票應透過電子系統開立並上傳存證，保存合意及必要證明；本頁 PDF 是紙本格式。<a href="./guide.html#electronic">查看電子折讓完整流程</a>。</li>
+</ol>
+<h2>常見問題</h2>
+<h3>已申報的發票有誤，怎麼辦？</h3>
+<p>先確認是填寫錯誤、交易取消還是實際退貨／折讓，再依規定更正或取得折讓證明；需重開時，依實際開立日期填寫並保留與原發票的關聯紀錄。<a href="./guide.html#invoice">查看發票開立與作廢說明</a>。</p>
+<h3>填寫資料會上傳嗎？</h3>
+<p>表單計算、預覽與 PDF 產生都在您的瀏覽器內完成，不保存草稿。公司查詢只送出您填寫的 8 碼統編；其他內容不外送。</p>
+<p>
+<a href="./guide.html#allowance">紙本折讓規定與官方依據 →</a>
+</p>
+</section>
+</main>
+<template id="row-template">
+<section class="allowance-row">
+<div class="row-heading">
+<h3>明細</h3>
+<button type="button" class="button button--small button--secondary" data-remove>刪除</button>
+</div>
+<div class="form-grid">
+<div class="field">
+<label data-for="invoiceType">原發票聯式</label>
+<select data-key="invoiceType">
+<option value="three">三聯式</option>
+<option value="two">二聯式</option>
+</select>
+</div>
+<div class="field">
+<label data-for="invoiceDate">原發票日期</label>
+<input type="date" data-key="invoiceDate">
+</div>
+<div class="field">
+<label data-for="invoiceNumber">原發票號碼</label>
+<input data-key="invoiceNumber" placeholder="例：AB12345678" maxlength="10" autocomplete="off">
+</div>
+<div class="field">
+<label data-for="description">品名</label>
+<input data-key="description" maxlength="100" autocomplete="off">
+</div>
+<div class="field">
+<label data-for="quantity">數量</label>
+<input data-key="quantity" inputmode="decimal" autocomplete="off" placeholder="可輸入小數">
+</div>
+<div class="field">
+<label data-for="unitPrice">未稅單價（元）</label>
+<input data-key="unitPrice" inputmode="decimal" autocomplete="off" placeholder="可輸入小數">
+</div>
+<div class="field">
+<label data-for="taxType">課稅別</label>
+<select data-key="taxType">
+<option value="tax">應稅 5%</option>
+<option value="zero">零稅率</option>
+<option value="free">免稅</option>
+</select>
+</div>
+</div>
+<p class="row-totals">
+<span>未稅金額 <output data-net>—</output>
+</span>
+<span>營業稅 <output data-tax>—</output>
+</span>
+</p>
+</section>
+</template>
+<footer>
+<p>宸逸稅務小幫手 · 依實際交易與給付情況填寫，完成後請核對並交由事務所辦理申報。</p>
+<p>
+<a href="./guide.html">使用說明與法規依據</a> · 文字、影像與簽名不儲存在本站。</p>
+</footer>
+</body>
+</html>
