@@ -3,6 +3,8 @@
 .tool-header h1 { margin:24px 0 8px; font-size:clamp(2rem, 5vw, 3.25rem); letter-spacing:-.04em; line-height:1.25; }
 .tool-header > p:last-child { color:var(--muted); margin:8px 0; }
 .tool-header .eyebrow { margin-top:28px; }
+.paper-only-notice { color:#b42318; margin:8px 0; }
+.paper-only-notice strong { font-weight:700; }
 .tool-nav { display:flex; gap:4px; flex-wrap:wrap; padding:12px 24px; background:white; border-bottom:1px solid var(--line); }
 .tool-header .tool-nav { margin-top:18px; padding:8px 0; }
 .tool-nav a { display:inline-flex; min-height:44px; align-items:center; padding:8px 14px; border-radius:8px; color:var(--blue); text-decoration:none; font-size:.9rem; font-weight:700; }
