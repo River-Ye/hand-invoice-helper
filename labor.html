@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="宸浥勞務報酬單小幫手：115 年扣繳、補充保費與實領反算，附件及簽名只在瀏覽器處理，下載 A4 PDF。">
+  <meta name="description" content="宸浥勞務報酬單小幫手：依給付年度已確認規則試算扣繳、補充保費與實領反算，附件及簽名只在瀏覽器處理，下載 A4 PDF。">
   <meta name="theme-color" content="#1e4b88">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://company.g0v.ronny.tw; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
@@ -26,7 +26,7 @@
 <a href="./allowance.html">折讓單</a>
 <a href="./guide.html">填寫教學</a>
     </nav>
-    <p class="eyebrow">LABOR PAYMENT · 115 年度</p>
+    <p class="eyebrow" id="year-label">LABOR PAYMENT</p>
     <h1>勞報單小幫手</h1>
     <p>填寫、試算、簽名，一次完成勞務報酬單。可下載空白或部分填寫的 A4 PDF。</p>
   </header>
@@ -66,7 +66,10 @@
 </div>
               <div class="field">
 <label for="nationality">國籍</label>
-<input id="nationality" type="text" maxlength="30" placeholder="例如：中華民國、日本">
+<select id="nationality" aria-describedby="nationality-help">
+<option value="">請選擇國籍／地區（可留空）</option>
+</select>
+<p id="nationality-help" class="hint">依國稅局國家代碼表選擇；國籍不會自動決定稅務居住身分或健保資格。</p>
 </div>
               <div class="field full">
 <label for="residency">稅務居住身分</label>
@@ -120,7 +123,7 @@
 <input id="document-date" type="date">
 </div>
             </div>
-            <p id="year-help" class="hint">試算依實際給付日期，僅適用民國 115 年（2026）；勞務期間可跨年度。日期留空可下載空白欄位。</p>
+            <p id="year-help" class="hint">依實際給付日期，自動套用已確認的年度規則；最新已啟用民國 <span id="latest-year">115 年（2026）</span>。官方公告經事務所確認後才啟用，新年度尚未確認時不試算，仍可下載空白或部分填寫表單。勞務期間可跨年度。</p>
           </fieldset>
           <fieldset>
             <legend>報酬與扣繳試算</legend>
@@ -157,7 +160,7 @@
 <option value="yes">當月僅這一次給付</option>
 <option value="no">當月分次給付／尚未確定</option>
 </select>
-<p class="hint">分次給付須按全月薪資總額判斷 6%／18%，本工具保留金額空欄，請另行核算。</p>
+<p class="hint">分次給付須按全月薪資總額判斷適用稅率，本工具保留金額空欄，請另行核算。</p>
 </div>
               <div class="field full">
 <label for="nhi-status">所得人健保資格</label>
@@ -252,15 +255,17 @@
       <section class="preview" aria-labelledby="preview-title">
         <p class="step">02 · 核對後下載</p>
 <h2 id="preview-title">勞報單預覽</h2>
-        <p class="hint">115 年度適用 · 1 頁 A4 · 圖片 PDF。請在下方欄位核對金額後，再交由所得人確認簽章。</p>
+        <p class="hint"><span id="preview-year">給付年度未填</span> · 1 頁 A4 · 圖片 PDF。請在下方欄位核對金額後，再交由所得人確認簽章。</p>
         <div id="calculation-summary" aria-live="polite">
 </div>
+        <p id="nonresident-notice" class="paper-only-notice" hidden><strong>付款給非居住者後10天內要申報稅務，請於付款前通知您的記帳事務所，以免有罰則</strong></p>
         <p id="calculation-notice" class="notice" role="status" hidden>
 </p>
         <p id="form-error" class="error" role="alert">
 </p>
         <div id="document-preview" aria-label="勞務報酬單 A4 預覽">
 </div>
+        <p class="notice">代扣所得稅：<a href="https://www.etax.nat.gov.tw/etwmain/etw144w/151" target="_blank" rel="noopener noreferrer">財政部繳款書</a><br>補充保費：<a href="https://eservice.nhi.gov.tw/2nd/" target="_blank" rel="noopener noreferrer">二代健保繳款書</a></p>
         <div class="actions">
 <button type="button" class="button button--secondary" id="clear-button">清除全部資料</button>
 <button type="button" class="button button--primary" id="download-button">下載 PDF</button>
@@ -284,18 +289,18 @@
         <li>
 <strong>92 其他所得：</strong>一般個人不屬於前述類別的給付，應確認所得性質。給付時不代扣所得稅，仍有列單申報及所得人依法申報義務；不屬於個人補充保費計費的六類所得。</li>
       </ul>
-      <h3>扣繳門檻速查（民國 115 年）</h3>
+      <h3>扣繳門檻速查（民國 <span id="reference-year">115</span> 年）</h3>
       <ul>
         <li>
-<strong>境內居住者 9A／9B：</strong>稅額按 10% 計算、元以下捨去；算出的稅額不超過 2,000 元免扣，整數給付自 20,010 元起扣稅。一般健保資格者，單次達 20,000 元另扣 2.11%。</li>
+<strong>境內居住者 9A／9B：</strong><span id="reference-resident-business">稅額按 10% 計算、元以下捨去；算出的稅額不超過 2,000 元免扣，整數給付自 20,010 元起扣稅。一般健保資格者，單次達 20,000 元另扣 2.11%。</span></li>
         <li>
-<strong>境內居住者兼職 50：</strong>給付達 90,501 元扣 5%；一般健保資格者單次給付達 29,500 元另扣 2.11%。</li>
+<strong>境內居住者兼職 50：</strong><span id="reference-resident-salary">給付達 90,501 元扣 5%；一般健保資格者單次給付達 29,500 元另扣 2.11%。</span></li>
         <li>
-<strong>非居住者：</strong>9A 按 20%；9B 單次不超過 5,000 元免扣，超過則全額按 20%。50 須以當月薪資判斷：不超過 44,250 元按 6%，超過按 18%；本工具僅計算確認當月一次給付的情形。</li>
+<strong>非居住者：</strong><span id="reference-nonresident">9A 按 20%；9B 單次不超過 5,000 元免扣，超過則全額按 20%。50 須以當月薪資判斷：不超過 44,250 元按 6%，超過按 18%；本工具僅計算確認當月一次給付的情形。</span></li>
         <li>
-<strong>健保補充保費：</strong>元以下四捨五入，單次計費基礎上限 1,000 萬元。免扣資格須確認適用所得種類、本人投保身分與證明；外籍、工會會員或其眷屬並非一律免扣。</li>
+<strong>健保補充保費：</strong><span id="reference-nhi-cap">元以下四捨五入，單次計費基礎上限 1,000 萬元。</span>免扣資格須確認適用所得種類、本人投保身分與證明；外籍、稅務非居住者、工會會員或其眷屬並非一律免扣。選擇非居住者後須明確確認健保資格；尚未確認時補充保費與實領金額留空，已確認無投保資格才免扣。</li>
       </ul>
-      <p>依據：<a href="https://law-out.mof.gov.tw/LawContent.aspx?id=FL005962" target="_blank" rel="noopener noreferrer">各類所得扣繳率標準</a>、<a href="https://www.etax.nat.gov.tw/etwmain/tax-info/understanding/tax-q-and-a/national/individual-income-tax/withheld-rule/rule/n3x6znM" target="_blank" rel="noopener noreferrer">115 年薪資起扣標準</a>、<a href="https://www.nhi.gov.tw/ch/cp-4516-74b0f-2613-1.html" target="_blank" rel="noopener noreferrer">健保補充保費計算</a>。</p>
+      <p>依據：<a href="https://law-out.mof.gov.tw/LawContent.aspx?id=FL005962" target="_blank" rel="noopener noreferrer">各類所得扣繳率標準</a>、<a href="https://www.etax.nat.gov.tw/etwmain/tax-info/understanding/tax-q-and-a/national/individual-income-tax/withheld-rule/rule/n3x6znM" target="_blank" rel="noopener noreferrer">薪資起扣標準</a>、<a href="https://www.nhi.gov.tw/ch/cp-4516-74b0f-2613-1.html" target="_blank" rel="noopener noreferrer">健保補充保費計算</a>、<a href="https://www.ntbt.gov.tw/multiplehtml/e374f0218452483d93c89006f4842798" target="_blank" rel="noopener noreferrer">國籍／地區代碼表</a>。<a href="./guide.html#labor">查看年度規則更新與申報說明</a>。</p>
       <h3>給付後，記得繳納與申報</h3>
       <p>居住者已扣的稅款，原則上於給付次月 10 日前繳清；非居住者須依扣繳日起 10 日內辦理繳納、憑單申報與交付的規定處理。健保補充保費於給付日次月底前繳納；年度明細及扣免繳憑單另按期限申報。遇例假日、延長申報期間等情形，請確認當年度公告。<a href="./guide.html#labor">查看本站繳款與申報教學</a>
 </p>
@@ -321,7 +326,7 @@
   </dialog>
   <footer>
 <p>
-<strong>宸浥小幫手</strong> · 本頁適用民國 115 年。製作 PDF 不代表已完成申報、繳稅或繳納補充保費。</p>
+<strong>宸浥小幫手</strong> · 試算依給付年度已確認的規則。製作 PDF 不代表已完成申報、繳稅或繳納補充保費。</p>
 <p>
 <a href="./index.html">回工具首頁</a> · <a href="./guide.html#labor">勞報單填寫教學</a>
 </p>

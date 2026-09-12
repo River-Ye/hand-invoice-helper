@@ -1,0 +1,32 @@
+name: 年度規則檢查
+
+on:
+  schedule:
+    - cron: '17 1 * * 2' # 每週二台北時間 09:17
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: annual-rules
+  cancel-in-progress: false
+
+jobs:
+  check:
+    if: github.repository == 'River-Ye/hand-invoice-helper'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: 驗證監測程式
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+      - name: 比對官方來源，有變動時更新同一則 Issue
+        run: python3 scripts/monitor_annual_rules.py --publish
+        env:
+          GH_TOKEN: ${{ github.token }}

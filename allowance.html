@@ -58,32 +58,7 @@
 </p>
 </fieldset>
 <fieldset>
-<legend>02 · 基本資訊</legend>
-<div class="form-grid">
-<div class="field">
-<label for="allowance-date">折讓單開立日期</label>
-<input id="allowance-date" name="allowance-date" type="date" autocomplete="off" >
-</div>
-<div class="field">
-<label for="copies">PDF 輸出聯數</label>
-<select id="copies">
-<option value="4">四聯 · 2 張 A4</option>
-<option value="2">二聯 · 1 張 A4</option>
-</select>
-</div>
-</div>
-</fieldset>
-<fieldset>
-<legend>03 · 發票折讓明細</legend>
-<p class="hint">最多 7 筆。數量、未稅單價最多 6 位小數；每列金額與稅額四捨五入至元，合計加總各列。請與原交易核對。</p>
-<div id="rows">
-</div>
-<button class="button button--small button--secondary" type="button" id="add-row">＋ 新增明細</button>
-<p id="row-limit" class="status" role="status">
-</p>
-</fieldset>
-<fieldset>
-<legend>04 · 原進貨人（買方）</legend>
+<legend>02 · 原進貨人（買方）</legend>
 <p class="hint">輸入完整 8 碼統編會送至 g0v 查詢公司資料；姓名、地址與明細不外送。查不到時可直接手填。</p>
 <div class="form-grid">
 <div class="field">
@@ -98,9 +73,27 @@
 <label for="buyer-address">聯絡地址（選填）</label>
 <input id="buyer-address" name="buyer-address" maxlength="180" autocomplete="off">
 </div>
+<div class="field">
+<label for="allowance-date">折讓單開立日期</label>
+<input id="allowance-date" name="allowance-date" type="date" autocomplete="off">
+</div>
 </div>
 <p class="status" id="buyer-status" role="status">
 </p>
+</fieldset>
+<fieldset>
+<legend>03 · 發票折讓明細</legend>
+<p class="hint">最多 7 筆。退款金額填整列含稅總額，不再乘以數量；數量只記錄退貨件數。數量、退款金額最多 6 位小數，退款總額先四捨五入至元，再依課稅別反推未稅金額與稅額。PDF 未稅單價依數量換算，最多 6 位小數；未知數量可留空。若單價精度不足以回算相同未稅金額，PDF 單價留空供核對，退款總額及稅額不變。</p>
+<p id="invoice-type-hint" class="hint">整張折讓單的原發票聯式由明細 1 統一設定，其他明細沿用。</p>
+<div id="rows">
+</div>
+<button class="button button--small button--secondary" type="button" id="add-row">＋ 新增明細</button>
+<p id="row-limit" class="status" role="status">
+</p>
+<div class="field">
+<label for="copies">PDF 輸出聯數（依原發票聯式自動決定）</label>
+<input id="copies" value="四聯 · 2 張 A4" readonly aria-describedby="invoice-type-hint">
+</div>
 </fieldset>
 </form>
 </section>
@@ -127,6 +120,12 @@
 <output id="tax-total">—</output>
 </dd>
 </div>
+<div class="summary-item">
+<dt>退款金額合計（含稅）</dt>
+<dd>
+<output id="refund-total">—</output>
+</dd>
+</div>
 </dl>
 <p class="error" id="form-error" role="alert">
 </p>
@@ -134,7 +133,7 @@
 <button type="button" class="button button--primary" id="download-pdf">下載折讓單 PDF</button>
 <button type="button" class="button button--secondary" id="clear-form">清除全部資料</button>
 </div>
-<p class="hint">空白或部分填寫也可下載，未填欄位留空。離開頁面不保存資料。二聯只輸出前兩聯，請確認交易需要的聯次。</p>
+<p class="hint">空白或部分填寫也可下載，未填欄位留空。離開頁面不保存資料。原二聯式發票輸出二聯、1 張 A4；原三聯式發票輸出四聯、2 張 A4。</p>
 <p id="download-status" class="status" role="status">
 </p>
 </section>
@@ -172,7 +171,7 @@
 <div class="form-grid">
 <div class="field">
 <label data-for="invoiceType">原發票聯式</label>
-<select data-key="invoiceType">
+<select data-key="invoiceType" aria-describedby="invoice-type-hint">
 <option value="three">三聯式</option>
 <option value="two">二聯式</option>
 </select>
@@ -194,8 +193,8 @@
 <input data-key="quantity" inputmode="decimal" autocomplete="off" placeholder="可輸入小數">
 </div>
 <div class="field">
-<label data-for="unitPrice">未稅單價（元）</label>
-<input data-key="unitPrice" inputmode="decimal" autocomplete="off" placeholder="可輸入小數">
+<label data-for="refundAmount">退款金額（含稅價）</label>
+<input data-key="refundAmount" inputmode="decimal" autocomplete="off" placeholder="整列總額，不再乘以數量">
 </div>
 <div class="field">
 <label data-for="taxType">課稅別</label>
@@ -210,6 +209,8 @@
 <span>未稅金額 <output data-net>—</output>
 </span>
 <span>營業稅 <output data-tax>—</output>
+</span>
+<span>退款合計（含稅） <output data-total>—</output>
 </span>
 </p>
 </section>

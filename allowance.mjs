@@ -1,4 +1,4 @@
-import { calculateAllowanceRow, MAX_AMOUNT } from './calculations.mjs';
+import { calculateAllowanceRow, allowanceUnitPrice, MAX_AMOUNT } from './calculations.mjs';
 import { todayISO, validateDate, bindCompanyLookup } from './tool-common.mjs';
 import { renderAllowance, downloadPdf } from './pdf.mjs';
 
@@ -13,7 +13,7 @@ let timer;
 let exporting = false;
 let resetRevision = 0;
 
-function addRow() {
+function addRow(invoiceType = rowContainer.firstElementChild?.querySelector('[data-key="invoiceType"]').value || 'three') {
   if (rowContainer.children.length >= 7) return;
   const row = $('row-template').content.firstElementChild.cloneNode(true);
   const id = ++rowId;
@@ -22,8 +22,25 @@ function addRow() {
     input.name = input.id;
     row.querySelector(`[data-for="${input.dataset.key}"]`).htmlFor = input.id;
   }
+  row.querySelector('[data-key="invoiceType"]').value = invoiceType;
   rowContainer.append(row);
   labelRows();
+}
+
+function syncInvoiceType() {
+  const selects = [...rowContainer.querySelectorAll('[data-key="invoiceType"]')];
+  if (!selects.length) return;
+  const hasVat = $('buyer-vat').value.trim() !== '';
+  const invoiceType = hasVat ? 'three' : selects[0].value;
+  selects.forEach((select, index) => {
+    select.value = invoiceType;
+    select.disabled = index > 0;
+    select.querySelector('[value="two"]').disabled = hasVat;
+  });
+  $('copies').value = invoiceType === 'two' ? '二聯 · 1 張 A4' : '四聯 · 2 張 A4';
+  $('invoice-type-hint').textContent = hasVat
+    ? '買方已填統編，原發票聯式固定為三聯式，輸出四聯、2 張 A4；所有明細沿用。'
+    : '整張折讓單的原發票聯式由明細 1 統一設定，其他明細沿用。';
 }
 
 function labelRows() {
@@ -33,6 +50,7 @@ function labelRows() {
   });
   $('add-row').disabled = rowContainer.children.length === 7;
   $('row-limit').textContent = `已填 ${rowContainer.children.length} / 7 列`;
+  syncInvoiceType();
 }
 
 function readForm() {
@@ -42,13 +60,16 @@ function readForm() {
     }
   }
   const value = (id) => $(id).value.trim();
+  const invoiceType = rowContainer.firstElementChild.querySelector('[data-key="invoiceType"]').value;
+  if (!['two', 'three'].includes(invoiceType)) throw new Error('請選擇有效的原發票聯式。');
+  if (value('buyer-vat') && invoiceType !== 'three') throw new Error('買方填有統編時，原發票必須為三聯式。');
   for (const prefix of ['seller', 'buyer']) {
     if (value(`${prefix}-vat`) && !/^\d{8}$/.test(value(`${prefix}-vat`))) throw new Error(`${prefix === 'seller' ? '賣方' : '買方'}統編需為 8 碼半形數字。`);
   }
   const data = {
     sellerName: value('seller-name'), sellerVat: value('seller-vat'), sellerAddress: value('seller-address'),
     buyerName: value('buyer-name'), buyerVat: value('buyer-vat'), buyerAddress: value('buyer-address'),
-    date: value('allowance-date'), copies: value('copies'),
+    date: value('allowance-date'), copies: invoiceType === 'two' ? '2' : '4',
   };
   validateDate(data.date, '折讓日期');
   let net = 0;
@@ -57,6 +78,7 @@ function readForm() {
   let incomplete = false;
   const rows = [...rowContainer.children].map((row, index) => {
     const fields = Object.fromEntries([...row.querySelectorAll('[data-key]')].map(input => [input.dataset.key, input.value.trim()]));
+    if (fields.invoiceType !== invoiceType) throw new Error('所有明細的原發票聯式必須與明細 1 相同。');
     validateDate(fields.invoiceDate, `明細 ${index + 1} 的原發票日期`);
     if (data.date && fields.invoiceDate > data.date) throw new Error(`明細 ${index + 1} 的原發票日期不可晚於折讓日期。`);
     if (fields.invoiceNumber && !/^[A-Za-z]{2}\d{8}$/.test(fields.invoiceNumber)) throw new Error(`明細 ${index + 1} 的發票號碼需為 2 碼英文字母及 8 碼數字。`);
@@ -64,15 +86,16 @@ function readForm() {
     let result;
     try { result = calculateAllowanceRow(fields); }
     catch (cause) { throw new Error(`明細 ${index + 1}：${cause.message}`); }
-    const active = ['invoiceDate', 'invoiceNumber', 'description', 'quantity', 'unitPrice'].some(key => fields[key]);
+    const active = ['invoiceDate', 'invoiceNumber', 'description', 'quantity', 'refundAmount'].some(key => fields[key]);
     if (active && !result) incomplete = true;
     if (result) { net += result.net; tax += result.tax; hasAmount = true; }
     row.querySelector('[data-net]').textContent = money(result?.net ?? null);
     row.querySelector('[data-tax]').textContent = money(result?.tax ?? null);
-    return { ...fields, net: result?.net ?? null, tax: result?.tax ?? null };
+    row.querySelector('[data-total]').textContent = money(result?.total ?? null);
+    return { ...fields, unitPrice: allowanceUnitPrice(result?.net, fields.quantity), net: result?.net ?? null, tax: result?.tax ?? null, total: result?.total ?? null };
   });
   if (net + tax > MAX_AMOUNT) throw new Error('整張折讓單含稅合計不可超過 999,999,999 元。');
-  const totals = hasAmount && !incomplete ? { net, tax } : { net: null, tax: null };
+  const totals = hasAmount && !incomplete ? { net, tax, total: net + tax } : { net: null, tax: null, total: null };
   return { data, rows, totals, incomplete };
 }
 
@@ -89,14 +112,16 @@ function updatePreview() {
     preview.replaceChildren(...canvases);
     $('net-total').textContent = money(current.totals.net);
     $('tax-total').textContent = money(current.totals.tax);
-    if (current.incomplete) error.textContent = '尚有明細未填數量或單價，合計留白供另行核算；仍可下載部分填寫的表單。';
+    $('refund-total').textContent = money(current.totals.total);
+    if (current.incomplete) error.textContent = '尚有明細未填退款金額，合計留白供另行核算；仍可下載部分填寫的表單。';
     $('download-pdf').disabled = exporting;
     return canvases;
   } catch (cause) {
     preview.replaceChildren();
     $('net-total').textContent = '—';
     $('tax-total').textContent = '—';
-    for (const item of rowContainer.querySelectorAll('[data-net], [data-tax]')) item.textContent = '—';
+    $('refund-total').textContent = '—';
+    for (const item of rowContainer.querySelectorAll('[data-net], [data-tax], [data-total]')) item.textContent = '—';
     error.textContent = cause.message;
     $('download-pdf').disabled = true;
     return null;
@@ -120,22 +145,25 @@ function clearAll(render = true) {
   preview.replaceChildren();
   $('net-total').textContent = '—';
   $('tax-total').textContent = '—';
+  $('refund-total').textContent = '—';
   if (render) updatePreview();
 }
 
 form.addEventListener('submit', event => event.preventDefault());
 form.addEventListener('input', () => {
+  syncInvoiceType();
   clearTimeout(timer);
   $('download-status').textContent = '';
   timer = setTimeout(updatePreview, 120);
 });
-form.addEventListener('change', updatePreview);
-$('add-row').addEventListener('click', () => { addRow(); updatePreview(); rowContainer.lastElementChild.querySelector('select').focus(); });
+form.addEventListener('change', () => { syncInvoiceType(); updatePreview(); });
+$('add-row').addEventListener('click', () => { addRow(); updatePreview(); rowContainer.lastElementChild.querySelector('[data-key="invoiceDate"]').focus(); });
 rowContainer.addEventListener('click', event => {
   const remove = event.target.closest('[data-remove]');
   if (!remove) return;
+  const invoiceType = rowContainer.firstElementChild.querySelector('[data-key="invoiceType"]').value;
   remove.closest('.allowance-row').remove();
-  if (!rowContainer.children.length) addRow();
+  if (!rowContainer.children.length) addRow(invoiceType);
   labelRows();
   updatePreview();
   $('add-row').focus();

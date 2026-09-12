@@ -96,7 +96,7 @@ function imageBox(ctx, image, label, x, y, width, height) {
 export function renderLabor(data, result, images = {}) {
   const { canvas, ctx } = page();
   text(ctx, '勞務報酬單', 12, 9, 186, 9, '標題', { size: 7, bold: true, align: 'center' });
-  text(ctx, '適用民國 115 年（2026 年）給付｜金額單位：新臺幣元', 12, 20, 186, 5, '年度', { align: 'center' });
+  text(ctx, `${data.yearLabel || '給付年度未填'}｜金額單位：新臺幣元`, 12, 20, 186, 5, '年度', { align: 'center' });
   field(ctx, '給付單位', data.payerName, 12, 28, 128);
   field(ctx, '統一編號', data.payerVat, 140, 28, 58);
   field(ctx, '單位地址', data.payerAddress, 12, 39, 186);
@@ -179,12 +179,12 @@ function allowanceCopy(ctx, data, rows, totals, offset, copy) {
       x += width;
     });
   }
-  cell(ctx, '合計（新臺幣元）', 8, 125.8, 133, 8, '合計標籤', { align: 'right', bold: true });
+  cell(ctx, totals?.total == null ? '合計（新臺幣元）' : `退款合計（含稅）：${money(totals.total)} 元`, 8, 125.8, 133, 8, '合計標籤', { align: 'right', bold: true });
   cell(ctx, money(totals?.net), 141, 125.8, 22, 8, '未稅合計', { padding: 0.5, align: 'right', bold: true });
   cell(ctx, '稅額合計', 163, 125.8, 20, 8, '稅額合計標籤', { padding: 0.5, align: 'center' });
   cell(ctx, money(totals?.tax), 183, 125.8, 19, 8, '稅額合計', { padding: 0.5, align: 'right', bold: true });
   text(ctx, '買受人簽章：', 8, 136, 91, 7, '買受人簽章', { bold: true });
-  text(ctx, '二聯式原發票：依適用規定取回收執聯。', 99, 136, 103, 7, '簽章說明');
+  text(ctx, rows[0]?.invoiceType === 'three' ? '三聯式原發票：請買受人依規定蓋章確認。' : '二聯式原發票：依適用規定取回收執聯。', 99, 136, 103, 7, '簽章說明');
   ctx.restore();
 }
 

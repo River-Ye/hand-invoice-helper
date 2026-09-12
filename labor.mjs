@@ -1,4 +1,6 @@
-import { calculateLabor, reverseLabor, LABOR_YEAR, MAX_AMOUNT } from './calculations.mjs';
+import { calculateLabor, reverseLabor, MAX_AMOUNT } from './calculations.mjs';
+import { getLaborRules, LATEST_LABOR_YEAR } from './labor-rules.mjs';
+import { COUNTRIES } from './countries.mjs';
 import { renderLabor, downloadPdf } from './pdf.mjs';
 import { todayISO, validateDate, bindCompanyLookup } from './tool-common.mjs';
 
@@ -29,15 +31,17 @@ const businessTypes = [
   ['98', '稿費／講演鐘點－非自行出版'], ['99', '稿費／版稅－自行出版'],
 ];
 for (const [code, label] of businessTypes) $('business').add(new Option(`${code} ${label}`, code));
+for (const [code, label] of COUNTRIES) $('nationality').add(new Option(`${label}（${code}）`, code));
 
 const nhiQualifications = {
+  unknown: ['尚未確認健保投保資格', '請先向所得人及健保署確認資格；確認前不計算補充保費與實領金額，也不進行實領反算。'],
   general: ['一般計費資格', '依本次給付金額與所得類別計算。稅務非居住者或外籍人士，只要有健保投保資格仍須依法判斷扣費。'],
-  none: ['無健保投保資格', '由所得人主動告知，給付單位須向健保署確認無投保資格；僅未持健保卡、未投保或具有外籍身分，不足以認定免扣。'],
+  none: ['已確認無健保投保資格', '由所得人主動告知，給付單位須向健保署確認無投保資格；僅未持健保卡、未投保或具有外籍身分，不足以認定免扣。'],
   lowIncome: ['第 5 類被保險人（低收入戶）', '須確認本人為第 5 類被保險人，並取得鄉、鎮、市、區公所核發，在所得給付期間有效的低收入戶證明；不是中低收入戶。'],
   union: ['無一定雇主或自營作業而在工會投保的本人', '限依法以無一定雇主或自營作業身分參加職業工會健保的本人（第 2 類第 1 目），其執行業務收入適用；須有給付期間有效的在保或繳費證明，眷屬不適用。'],
   professional: ['自行執業專技人員本人（第 1 類第 5 目）', '本人須以執行業務所得為健保投保金額，取得投保單位出具的在保證明；具有執業資格但未以此身分投保、或只是眷屬，不適用。'],
   category2: ['第 2 類被保險人本人', '兼職薪資免扣限第 2 類被保險人本人；取得投保單位出具的在保或繳費證明，眷屬不適用。'],
-  vulnerable: ['法定弱勢資格（未達最低工資免扣）', '限中低收入戶、中低收入老人、接受生活扶助的弱勢兒少、領身心障礙生活補助者、特殊境遇家庭受扶助者，或健保法第 100 條經濟困難者；須有給付期間有效的主管機關證明。單次未達 29,500 元免扣，達門檻仍計收。'],
+  vulnerable: ['法定弱勢資格（未達最低工資免扣）', '限中低收入戶、中低收入老人、接受生活扶助的弱勢兒少、領身心障礙生活補助者、特殊境遇家庭受扶助者，或健保法第 100 條經濟困難者；須有給付期間有效的主管機關證明。單次未達給付年度最低工資免扣，達門檻仍計收。'],
 };
 const nhiByCategory = {
   '9A': ['general', 'none', 'lowIncome', 'union', 'professional', 'vulnerable'],
@@ -54,18 +58,19 @@ const fieldMap = {
   paymentMethod: 'payment-method', bank: 'bank', branch: 'branch', accountName: 'account-name', accountNumber: 'account-number',
 };
 
-function syncChoices() {
+function syncChoices(resetNhi = false) {
   const category = value('category');
-  const nhiStatus = value('nhi-status');
-  const allowed = nhiByCategory[category];
+  const nhiStatus = resetNhi ? 'unknown' : value('nhi-status');
+  const allowed = ['unknown', ...nhiByCategory[category]];
   $('nhi-status').replaceChildren(...allowed.map(key => new Option(nhiQualifications[key][0], key)));
-  $('nhi-status').value = allowed.includes(nhiStatus) ? nhiStatus : 'general';
+  $('nhi-status').value = allowed.includes(nhiStatus) ? nhiStatus : (value('residency') === 'nonresident' || nhiStatus ? 'unknown' : 'general');
   $('nhi-status').disabled = category === '92';
   $('nhi-help').textContent = category === '92' ? '一般個人其他所得不列入個人補充保費的六類計費項目。' : nhiQualifications[value('nhi-status')][1];
   $('business-field').hidden = category !== '9A';
   $('salary-field').hidden = category !== '50';
   $('single-payment-field').hidden = category !== '50' || value('residency') !== 'nonresident';
   $('amount-label').textContent = value('amount-mode') === 'gross' ? '給付總額（新臺幣元）' : '希望實領金額（新臺幣元）';
+  $('nonresident-notice').hidden = value('residency') !== 'nonresident';
 }
 
 function readCurrent() {
@@ -81,6 +86,12 @@ function readCurrent() {
   if (Object.keys(imageErrors).length) throw new Error(Object.values(imageErrors)[0]);
   if (pendingImages.size) throw new Error('附件正在處理，完成後即可下載。');
   const data = Object.fromEntries(Object.entries(fieldMap).map(([key, id]) => [key, value(id)]));
+  data.nationality = COUNTRIES.find(([code]) => code === data.nationality)?.[1] || '';
+  const year = data.payDate ? Number(data.payDate.slice(0, 4)) : null;
+  const rules = year ? getLaborRules(year) : null;
+  data.yearLabel = year ? `民國 ${year - 1911} 年（${year}）${rules ? '' : '・規則待確認，不試算'}` : '給付年度未填，不試算';
+  $('year-label').textContent = `LABOR PAYMENT · ${data.yearLabel}`;
+  $('preview-year').textContent = data.yearLabel;
   data.residencyLabel = selectedText('residency');
   data.categoryLabel = selectedText('category');
   data.businessLabel = value('category') === '9A' && value('business') ? selectedText('business') : '';
@@ -91,15 +102,17 @@ function readCurrent() {
   let result = null;
   if (rawAmount) {
     if (!data.payDate) data.notice = '實際給付日期未填；金額未試算，請核算後填寫。';
-    else if (Number(data.payDate.slice(0, 4)) !== LABOR_YEAR) data.notice = '本工具僅適用 115 年給付；此筆金額須另行核算。';
+    else if (!rules) data.notice = `${year - 1911} 年規則尚未確認啟用；不沿用其他年度試算，仍可下載部分填寫表單。`;
     else if (value('category') === '50' && value('salary-scope') !== 'part-time') data.notice = '尚未確認兼職且非本單位投保；金額須另行核算。';
     else if (value('category') === '50' && value('residency') === 'nonresident' && value('single-payment') !== 'yes') data.notice = '非居住者當月多次或未確認給付次數；金額須另行核算。';
+    else if (value('category') !== '92' && value('nhi-status') === 'unknown' && value('amount-mode') === 'net') data.notice = '健保資格尚未確認，無法反算；確認前補充保費與實領金額維持空白。';
     else {
-      const options = { category: value('category'), residency: value('residency'), nhiStatus: value('nhi-status'), singlePayment: value('single-payment') === 'yes' };
+      const options = { year, category: value('category'), residency: value('residency'), nhiStatus: value('nhi-status'), singlePayment: value('single-payment') === 'yes' };
       result = value('amount-mode') === 'gross'
         ? calculateLabor({ ...options, gross: Number(rawAmount) })
         : reverseLabor({ ...options, net: Number(rawAmount) });
       if (!result) throw new Error('指定實領金額在本工具範圍內無精確解，請調整金額或另行核算。');
+      if (result.nhi === null) data.notice = '健保資格尚未確認；先列出給付總額與所得稅，補充保費與實領金額待確認後計算。';
     }
   }
   return { data, result };
@@ -114,7 +127,7 @@ function setSummary(result) {
     const term = document.createElement('dt');
     term.textContent = label;
     const amount = document.createElement('dd');
-    amount.textContent = result ? `${result[key].toLocaleString('zh-TW')} 元` : '未計算';
+    amount.textContent = result?.[key] != null ? `${result[key].toLocaleString('zh-TW')} 元` : '未計算';
     group.append(term, amount);
     list.append(group);
   }
@@ -155,7 +168,7 @@ function schedulePreview() {
 const cancelCompanyLookup = bindCompanyLookup({ vat: $('payer-vat'), name: $('payer-name'), address: $('payer-address'), status: $('lookup-status'), onChange: schedulePreview });
 form.addEventListener('submit', event => event.preventDefault());
 form.addEventListener('input', schedulePreview);
-for (const id of ['category', 'residency', 'nhi-status', 'amount-mode']) $(id).addEventListener('change', () => { syncChoices(); schedulePreview(); });
+for (const id of ['category', 'residency', 'nhi-status', 'amount-mode']) $(id).addEventListener('change', () => { syncChoices(id === 'residency' && value('residency') === 'nonresident'); schedulePreview(); });
 
 function removeImage(key) {
   imageRevisions[key]++;
@@ -304,7 +317,8 @@ $('download-button').addEventListener('click', async () => {
   button.disabled = true;
   $('action-status').textContent = '正在製作 PDF…';
   try {
-    await downloadPdf([canvas], '勞務報酬單-115年.pdf', { isCurrent: () => revision === downloadRevision });
+    const year = value('pay-date') ? Number(value('pay-date').slice(0, 4)) - 1911 : null;
+    await downloadPdf([canvas], `勞務報酬單${year !== null ? `-${year}年` : ''}.pdf`, { isCurrent: () => revision === downloadRevision });
     if (revision === downloadRevision) $('action-status').textContent = '已送出 PDF 下載，請確認瀏覽器下載項目；尚未完成任何申報或繳納。';
   } catch (error) {
     if (revision === downloadRevision) $('action-status').textContent = `PDF 產生失敗：${error.message || '請重試。'}`;
@@ -313,6 +327,15 @@ $('download-button').addEventListener('click', async () => {
 window.addEventListener('pagehide', () => clearAll(false));
 window.addEventListener('pageshow', event => { if (event.persisted) clearAll(); });
 syncChoices();
+$('latest-year').textContent = `${LATEST_LABOR_YEAR - 1911} 年（${LATEST_LABOR_YEAR}）`;
+const latestRules = getLaborRules(LATEST_LABOR_YEAR);
+const money = amount => amount.toLocaleString('zh-TW');
+const rate = points => `${points / 100}%`;
+$('reference-year').textContent = LATEST_LABOR_YEAR - 1911;
+$('reference-resident-business').textContent = `稅額按 ${rate(latestRules.residentProfessionalRate)} 計算、元以下捨去；算出的稅額不超過 ${money(latestRules.residentTaxExemption)} 元免扣，整數給付自 ${money(Math.ceil((latestRules.residentTaxExemption + 1) * 10_000 / latestRules.residentProfessionalRate))} 元起扣稅。一般健保資格者，單次達 ${money(latestRules.nhiThreshold)} 元另扣 ${rate(latestRules.nhiRate)}。`;
+$('reference-resident-salary').textContent = `給付達 ${money(latestRules.salaryThreshold)} 元扣 ${rate(latestRules.residentSalaryRate)}；一般健保資格者單次給付達 ${money(latestRules.minimumWage)} 元另扣 ${rate(latestRules.nhiRate)}。`;
+$('reference-nonresident').textContent = `9A 按 ${rate(latestRules.nonresidentProfessionalRate)}；9B 單次不超過 ${money(latestRules.nonresidentRoyaltyExemption)} 元免扣，超過則全額按 ${rate(latestRules.nonresidentProfessionalRate)}。50 須以當月薪資判斷：不超過 ${money(latestRules.nonresidentSalaryThreshold)} 元按 ${rate(latestRules.nonresidentSalaryLowRate)}，超過按 ${rate(latestRules.nonresidentSalaryHighRate)}；本工具僅計算確認當月一次給付的情形。`;
+$('reference-nhi-cap').textContent = `元以下四捨五入，單次計費基礎上限 ${money(latestRules.nhiCap)} 元。`;
 $('pay-date').value = todayISO();
 $('document-date').value = todayISO();
 await document.fonts.ready;
