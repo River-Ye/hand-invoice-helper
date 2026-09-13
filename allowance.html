@@ -84,7 +84,7 @@
 <fieldset>
 <legend>03 · 發票折讓明細</legend>
 <p class="hint">最多 7 筆。退款金額填整列含稅總額，不再乘以數量；數量只記錄退貨件數。數量、退款金額最多 6 位小數，退款總額先四捨五入至元，再依課稅別反推未稅金額與稅額。PDF 未稅單價依數量換算，最多 6 位小數；未知數量可留空。若單價精度不足以回算相同未稅金額，PDF 單價留空供核對，退款總額及稅額不變。</p>
-<p id="invoice-type-hint" class="hint">整張折讓單的原發票聯式由明細 1 統一設定，其他明細沿用。</p>
+<p id="invoice-type-hint" class="hint">所有明細的原發票聯式依買方統編自動決定，無法手動選擇：未填統編為二聯式；填有統編為三聯式。</p>
 <div id="rows">
 </div>
 <button class="button button--small button--secondary" type="button" id="add-row">＋ 新增明細</button>
@@ -92,7 +92,7 @@
 </p>
 <div class="field">
 <label for="copies">PDF 輸出聯數（依原發票聯式自動決定）</label>
-<input id="copies" value="四聯 · 2 張 A4" readonly aria-describedby="invoice-type-hint">
+<input id="copies" value="二聯 · 1 張 A4" readonly aria-describedby="invoice-type-hint">
 </div>
 </fieldset>
 </form>
@@ -133,7 +133,7 @@
 <button type="button" class="button button--primary" id="download-pdf">下載折讓單 PDF</button>
 <button type="button" class="button button--secondary" id="clear-form">清除全部資料</button>
 </div>
-<p class="hint">空白或部分填寫也可下載，未填欄位留空。離開頁面不保存資料。原二聯式發票輸出二聯、1 張 A4；原三聯式發票輸出四聯、2 張 A4。</p>
+<p class="hint">空白或部分填寫也可下載，未填欄位留空。離開頁面不保存資料。買方未填統編時，原發票為二聯式，輸出二聯、1 張 A4；填有統編時為三聯式，輸出四聯、2 張 A4。聯式與聯數皆自動決定。</p>
 <p id="download-status" class="status" role="status">
 </p>
 </section>
@@ -171,9 +171,9 @@
 <div class="form-grid">
 <div class="field">
 <label data-for="invoiceType">原發票聯式</label>
-<select data-key="invoiceType" aria-describedby="invoice-type-hint">
-<option value="three">三聯式</option>
+<select data-key="invoiceType" aria-describedby="invoice-type-hint" disabled>
 <option value="two">二聯式</option>
+<option value="three">三聯式</option>
 </select>
 </div>
 <div class="field">

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { MAX_AMOUNT, LABOR_YEAR, calculateLabor, reverseLabor, calculateAllowanceRow, allowanceUnitPrice } from "./calculations.mjs";
+import { MAX_AMOUNT, LABOR_YEAR, calculateLabor, reverseLabor, calculateAllowanceRow, allowanceUnitPrice, allowanceInvoiceType } from "./calculations.mjs";
 
 test("labor uses 115-year constants and strictly accepts whole-dollar amounts", () => {
   assert.equal(LABOR_YEAR, 2026);
@@ -126,6 +126,11 @@ test("reverse calculation verifies results around every threshold and maximum", 
       }
     }
   }
+});
+
+test("allowance invoice type follows whether buyer VAT is filled, including partial input", () => {
+  for (const vat of ["", " ", "\t\n", "　"]) assert.equal(allowanceInvoiceType(vat), "two");
+  for (const vat of ["1", "12345678", " 12345678 ", "invalid"]) assert.equal(allowanceInvoiceType(vat), "three");
 });
 
 test("allowance treats refund as the row total, rounds gross first and derives tax exactly", () => {

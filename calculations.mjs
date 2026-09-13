@@ -95,6 +95,10 @@ function decimal(value, label) {
   return { value: BigInt(integer + fraction), scale: 10n ** BigInt(fraction.length) };
 }
 
+export function allowanceInvoiceType(buyerVat) {
+  return buyerVat.trim() ? "three" : "two";
+}
+
 export function calculateAllowanceRow({ quantity, refundAmount, taxType = "tax" } = {}) {
   if (!["tax", "zero", "free"].includes(taxType)) throw new Error("請選擇有效的課稅別。");
   const count = decimal(quantity, "數量");

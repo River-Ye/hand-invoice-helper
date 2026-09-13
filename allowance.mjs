@@ -1,4 +1,4 @@
-import { calculateAllowanceRow, allowanceUnitPrice, MAX_AMOUNT } from './calculations.mjs';
+import { calculateAllowanceRow, allowanceUnitPrice, allowanceInvoiceType, MAX_AMOUNT } from './calculations.mjs';
 import { todayISO, validateDate, bindCompanyLookup } from './tool-common.mjs';
 import { renderAllowance, downloadPdf } from './pdf.mjs';
 
@@ -13,7 +13,7 @@ let timer;
 let exporting = false;
 let resetRevision = 0;
 
-function addRow(invoiceType = rowContainer.firstElementChild?.querySelector('[data-key="invoiceType"]').value || 'three') {
+function addRow() {
   if (rowContainer.children.length >= 7) return;
   const row = $('row-template').content.firstElementChild.cloneNode(true);
   const id = ++rowId;
@@ -22,7 +22,6 @@ function addRow(invoiceType = rowContainer.firstElementChild?.querySelector('[da
     input.name = input.id;
     row.querySelector(`[data-for="${input.dataset.key}"]`).htmlFor = input.id;
   }
-  row.querySelector('[data-key="invoiceType"]').value = invoiceType;
   rowContainer.append(row);
   labelRows();
 }
@@ -30,17 +29,15 @@ function addRow(invoiceType = rowContainer.firstElementChild?.querySelector('[da
 function syncInvoiceType() {
   const selects = [...rowContainer.querySelectorAll('[data-key="invoiceType"]')];
   if (!selects.length) return;
-  const hasVat = $('buyer-vat').value.trim() !== '';
-  const invoiceType = hasVat ? 'three' : selects[0].value;
-  selects.forEach((select, index) => {
+  const invoiceType = allowanceInvoiceType($('buyer-vat').value);
+  selects.forEach(select => {
     select.value = invoiceType;
-    select.disabled = index > 0;
-    select.querySelector('[value="two"]').disabled = hasVat;
+    select.disabled = true;
   });
   $('copies').value = invoiceType === 'two' ? '二聯 · 1 張 A4' : '四聯 · 2 張 A4';
-  $('invoice-type-hint').textContent = hasVat
+  $('invoice-type-hint').textContent = invoiceType === 'three'
     ? '買方已填統編，原發票聯式固定為三聯式，輸出四聯、2 張 A4；所有明細沿用。'
-    : '整張折讓單的原發票聯式由明細 1 統一設定，其他明細沿用。';
+    : '買方未填統編，原發票聯式固定為二聯式，輸出二聯、1 張 A4；所有明細沿用。';
 }
 
 function labelRows() {
@@ -60,9 +57,7 @@ function readForm() {
     }
   }
   const value = (id) => $(id).value.trim();
-  const invoiceType = rowContainer.firstElementChild.querySelector('[data-key="invoiceType"]').value;
-  if (!['two', 'three'].includes(invoiceType)) throw new Error('請選擇有效的原發票聯式。');
-  if (value('buyer-vat') && invoiceType !== 'three') throw new Error('買方填有統編時，原發票必須為三聯式。');
+  const invoiceType = allowanceInvoiceType(value('buyer-vat'));
   for (const prefix of ['seller', 'buyer']) {
     if (value(`${prefix}-vat`) && !/^\d{8}$/.test(value(`${prefix}-vat`))) throw new Error(`${prefix === 'seller' ? '賣方' : '買方'}統編需為 8 碼半形數字。`);
   }
@@ -78,7 +73,7 @@ function readForm() {
   let incomplete = false;
   const rows = [...rowContainer.children].map((row, index) => {
     const fields = Object.fromEntries([...row.querySelectorAll('[data-key]')].map(input => [input.dataset.key, input.value.trim()]));
-    if (fields.invoiceType !== invoiceType) throw new Error('所有明細的原發票聯式必須與明細 1 相同。');
+    if (fields.invoiceType !== invoiceType) throw new Error('原發票聯式與買方統編狀態不符，請重新填寫買方統編。');
     validateDate(fields.invoiceDate, `明細 ${index + 1} 的原發票日期`);
     if (data.date && fields.invoiceDate > data.date) throw new Error(`明細 ${index + 1} 的原發票日期不可晚於折讓日期。`);
     if (fields.invoiceNumber && !/^[A-Za-z]{2}\d{8}$/.test(fields.invoiceNumber)) throw new Error(`明細 ${index + 1} 的發票號碼需為 2 碼英文字母及 8 碼數字。`);
@@ -161,9 +156,8 @@ $('add-row').addEventListener('click', () => { addRow(); updatePreview(); rowCon
 rowContainer.addEventListener('click', event => {
   const remove = event.target.closest('[data-remove]');
   if (!remove) return;
-  const invoiceType = rowContainer.firstElementChild.querySelector('[data-key="invoiceType"]').value;
   remove.closest('.allowance-row').remove();
-  if (!rowContainer.children.length) addRow(invoiceType);
+  if (!rowContainer.children.length) addRow();
   labelRows();
   updatePreview();
   $('add-row').focus();
